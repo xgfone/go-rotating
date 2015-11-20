@@ -23,7 +23,7 @@ var DATE_RE *regexp.Regexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(\.\w+)?$`)
 type TimedRotatingFileHook struct {
 	Filename    string
 	BackupCount int
-	interval    int
+	interval    int64
 	rotatorAt   int64
 	file        *FileHook
 	debug       bool
@@ -43,6 +43,8 @@ func NewTimedRotatingFileHook(filename string) (*TimedRotatingFileHook, error) {
 		BackupCount: 31, file: file, Locker: &sync.Mutex{}}
 	h.ReComputeRollover(Now())
 
+	t := time.Unix(h.rotatorAt, 0)
+	fmt.Println("rotatorAt", t.Format(DATETIME))
 	return h, nil
 }
 
@@ -63,8 +65,8 @@ func (h *TimedRotatingFileHook) ReComputeRollover(current_time int64) {
 	current_hour := t.Hour()
 	current_minute := t.Minute()
 	current_second := t.Second()
-	r := h.interval - ((current_hour*60+current_minute)*60 + current_second)
-	h.rotatorAt = current_time + int64(r)
+	r := h.interval - int64((current_hour*60+current_minute)*60+current_second)
+	h.rotatorAt = current_time + r
 }
 
 func (h *TimedRotatingFileHook) SetMode(mode int) (int, error) {
@@ -82,7 +84,7 @@ func (h *TimedRotatingFileHook) SetDebug(debug bool) *TimedRotatingFileHook {
 }
 
 func (h *TimedRotatingFileHook) SetInternal(day int) *TimedRotatingFileHook {
-	h.interval = day * MIDNIGHT
+	h.interval = int64(day) * MIDNIGHT
 	h.ReComputeRollover(Now())
 	return h
 }
@@ -126,9 +128,9 @@ func (h TimedRotatingFileHook) shouldRollover(entry *logrus.Entry) bool {
 
 func (h *TimedRotatingFileHook) doRollover() {
 	h.file.Close()
-	currentTime := Now()
-	dstNow := time.Unix(currentTime, 0)
-	dstPath := h.Filename + "." + dstNow.Format(DATE)
+
+	dstTime := h.rotatorAt - h.interval
+	dstPath := h.Filename + "." + time.Unix(dstTime, 0).Format(DATE)
 	if IsExist(dstPath) {
 		os.Remove(dstPath)
 	}
@@ -148,7 +150,7 @@ func (h *TimedRotatingFileHook) doRollover() {
 	}
 
 	h.file.Open()
-	h.ReComputeRollover(currentTime)
+	h.ReComputeRollover(Now())
 }
 
 func (h TimedRotatingFileHook) getFilesToDelete() []string {
