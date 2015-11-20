@@ -39,3 +39,6 @@ func main() {
     }
 }
 ```
+
+#### Note:
+Whichever user is running the go application must have read/write permissions to the log files selected, or if the files do not yet exists, then to the directory in which the files will be created.
