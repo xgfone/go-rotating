@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	DEFAULT_MODE = os.O_APPEND | os.O_CREATE
+	DEFAULT_MODE = os.O_APPEND | os.O_CREATE | os.O_WRONLY
 	DEFAULT_PERM = os.ModePerm
 )
 

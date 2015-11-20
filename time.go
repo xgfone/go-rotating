@@ -112,7 +112,8 @@ func (h *TimeRotatingFileHook) Fire(entry *logrus.Entry) error {
 	if h.shouldRollover(entry) {
 		h.doRollover()
 	}
-	return h.file.Fire(entry)
+	h.file.Fire(entry)
+	return nil
 }
 
 func (h TimeRotatingFileHook) shouldRollover(entry *logrus.Entry) bool {
