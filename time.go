@@ -40,7 +40,7 @@ func (w NullWriter) Write(d []byte) (int, error) {
 // TimeRotatingFileHook
 type TimeRotatingFileHook struct {
 	Filename    string
-	Internal    int
+	interval    int
 	BackupCount int
 	rotatorAt   int64
 	file        *FileHook
@@ -55,7 +55,7 @@ func NewTimeRotatingFileHook(filename string) (*TimeRotatingFileHook, error) {
 		return nil, err
 	}
 
-	h := &TimeRotatingFileHook{Filename: filename, Internal: MIDNIGHT, BackupCount: 31, file: file}
+	h := &TimeRotatingFileHook{Filename: filename, interval: MIDNIGHT, BackupCount: 31, file: file}
 	h.ReComputeRollover(Now())
 	return h, nil
 }
@@ -65,7 +65,7 @@ func (h *TimeRotatingFileHook) ReComputeRollover(current_time int64) {
 	current_hour := t.Hour()
 	current_minute := t.Minute()
 	current_second := t.Second()
-	r := h.Internal - ((current_hour*60+current_minute)*60 + current_second)
+	r := h.interval - ((current_hour*60+current_minute)*60 + current_second)
 	h.rotatorAt = current_time + int64(r)
 }
 
@@ -83,8 +83,9 @@ func (h *TimeRotatingFileHook) SetDebug(debug bool) *TimeRotatingFileHook {
 	return h
 }
 
-func (h *TimeRotatingFileHook) SetInternal(i int) *TimeRotatingFileHook {
-	h.Internal = i
+func (h *TimeRotatingFileHook) SetInternal(day int) *TimeRotatingFileHook {
+	h.interval = day * MIDNIGHT
+	h.ReComputeRollover(Now())
 	return h
 }
 
