@@ -1,5 +1,5 @@
 #### Rotate the log file
-A hook of [Logrus](https://github.com/Sirupsen/logrus), like TimedRotatingFileHandler of the Python logging.
+A hook of [Logrus](https://github.com/Sirupsen/logrus), such as StreamHook, FileHook, TimedRotatingFileHook like TimedRotatingFileHandler of the Python logging.
 
 #### Example
 ```go
@@ -16,7 +16,7 @@ var log = logrus.New()
 
 func init() {
     log.Out = rotating.NewNullWriter()
-    hook, err := rotating.NewTimeRotatingFileHook("test.log")
+    hook, err := rotating.NewTimedRotatingFileHook("test.log")
     if err != nil {
         fmt.Println(err)
     } else {
