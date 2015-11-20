@@ -14,10 +14,10 @@ const (
 )
 
 type FileHook struct {
-	Filename string
-	Stream   *StreamHook
+	filename string
+	stream   *StreamHook
 	Ok       bool
-	Locker   sync.Locker
+	locker   sync.Locker
 	mode     int
 	perm     os.FileMode
 	file     *os.File
@@ -25,12 +25,13 @@ type FileHook struct {
 }
 
 func NewFileHook(filename string) (*FileHook, error) {
-	file := &FileHook{Filename: filename, mode: DEFAULT_MODE, perm: DEFAULT_PERM,
-		Locker: &sync.Mutex{}, Stream: NewStreamHook(nil)}
+	file := &FileHook{filename: filename, mode: DEFAULT_MODE, perm: DEFAULT_PERM,
+		locker: &sync.Mutex{}, stream: NewStreamHook(nil)}
 	if err := file.Open(); err != nil {
 		return nil, err
 	}
-	file.Stream.Locker = nil
+	file.stream.SetLock(nil)
+
 	return file, nil
 }
 
@@ -52,33 +53,33 @@ func (f *FileHook) Fire(entry *logrus.Entry) error {
 
 	f.Lock()
 	defer f.Unlock()
-	return f.Stream.Fire(entry)
+	return f.stream.Fire(entry)
 }
 
 func (f *FileHook) Lock() {
-	if f.Locker != nil {
-		f.Locker.Lock()
+	if f.locker != nil {
+		f.locker.Lock()
 	}
 }
 
 func (f *FileHook) Unlock() {
-	if f.Locker != nil {
-		f.Locker.Unlock()
+	if f.locker != nil {
+		f.locker.Unlock()
 	}
 }
 
 func (f *FileHook) Open() error {
 	var err error
-	f.file, err = os.OpenFile(f.Filename, f.mode, f.perm)
+	f.file, err = os.OpenFile(f.filename, f.mode, f.perm)
 	if err != nil {
 		f.Ok = false
 		if f.debug {
-			fmt.Fprintf(os.Stderr, "Unable to open the file[%v]: %v\n", f.Filename, err)
+			fmt.Fprintf(os.Stderr, "Unable to open the file[%v]: %v\n", f.filename, err)
 		}
 		return err
 	} else {
 		f.Ok = true
-		f.Stream.SetWriter(f.file)
+		f.stream.SetWriter(f.file)
 		return nil
 	}
 }
@@ -88,7 +89,7 @@ func (f *FileHook) Close() error {
 		err := f.file.Close()
 		if err != nil {
 			if f.debug {
-				fmt.Fprintf(os.Stderr, "Unable to close the file[%v]: %v\n", f.Filename, err)
+				fmt.Fprintf(os.Stderr, "Unable to close the file[%v]: %v\n", f.filename, err)
 			}
 			return err
 		}
@@ -129,7 +130,18 @@ func (f *FileHook) SetPerm(perm os.FileMode) (os.FileMode, error) {
 	return p, nil
 }
 
-func (f *FileHook) SetDebug(debug bool) {
+func (f *FileHook) SetDebug(debug bool) *FileHook {
 	f.debug = debug
-	f.Stream.Debug = debug
+	f.stream.SetDebug(debug)
+	return f
+}
+
+func (f *FileHook) SetLock(locker sync.Locker) *FileHook {
+	f.locker = locker
+	return f
+}
+
+func (f *FileHook) SetStream(stream *StreamHook) *FileHook {
+	f.stream = stream
+	return f
 }

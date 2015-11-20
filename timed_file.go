@@ -13,21 +13,47 @@ import (
 )
 
 const (
-	MIDNIGHT = 60 * 60 * 24
-	DATE     = "2006-01-02"
-	DATETIME = "2006-01-02 15-04-05"
+	HOUR = 60 * 60
+	DAY  = HOUR * 24
+	WEEK = DAY * 7
+
+	HOUR_FMT = "2006-01-02_15"
+	DAY_FMT  = "2006-01-02"
+	DATE_FMT = "2006-01-02 15-04-05"
 )
 
-var DATE_RE *regexp.Regexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(\.\w+)?$`)
+var dayRE, hourRE *regexp.Regexp
+var mapExtMatch map[int64]*regexp.Regexp
+var mapExtFMT map[int64]string
+
+func init() {
+	dayRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(\.\w+)?$`)
+	hourRE = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}_\d{2}(\.\w+)?$`)
+
+	mapExtMatch = map[int64]*regexp.Regexp{
+		HOUR: hourRE,
+		DAY:  dayRE,
+		WEEK: dayRE,
+	}
+
+	mapExtFMT = map[int64]string{
+		HOUR: HOUR_FMT,
+		DAY:  DAY_FMT,
+		WEEK: DAY_FMT,
+	}
+}
 
 type TimedRotatingFileHook struct {
-	Filename    string
-	BackupCount int
+	filename    string
+	backupCount int
 	interval    int64
 	rotatorAt   int64
+	when        int64
+	extMatch    *regexp.Regexp
+	suffix      string
 	file        *FileHook
 	debug       bool
-	Locker      sync.Locker
+	locker      sync.Locker
 }
 
 func NewTimedRotatingFileHook(filename string) (*TimedRotatingFileHook, error) {
@@ -37,36 +63,50 @@ func NewTimedRotatingFileHook(filename string) (*TimedRotatingFileHook, error) {
 	if err != nil {
 		return nil, err
 	}
-	file.Locker = nil
+	file.SetLock(nil)
 
-	h := &TimedRotatingFileHook{Filename: filename, interval: MIDNIGHT,
-		BackupCount: 31, file: file, Locker: &sync.Mutex{}}
-	h.ReComputeRollover(Now())
-
-	t := time.Unix(h.rotatorAt, 0)
-	fmt.Println("rotatorAt", t.Format(DATETIME))
+	h := &TimedRotatingFileHook{filename: filename, file: file}
+	h.SetIntervalDay(1).SetBackupCount(30).SetLock(&sync.Mutex{}).ReComputeRollover()
 	return h, nil
 }
 
 func (h *TimedRotatingFileHook) Lock() {
-	if h.Locker != nil {
-		h.Locker.Lock()
+	if h.locker != nil {
+		h.locker.Lock()
 	}
 }
 
 func (h *TimedRotatingFileHook) Unlock() {
-	if h.Locker != nil {
-		h.Locker.Unlock()
+	if h.locker != nil {
+		h.locker.Unlock()
 	}
 }
 
-func (h *TimedRotatingFileHook) ReComputeRollover(current_time int64) {
+func (h *TimedRotatingFileHook) SetLock(locker sync.Locker) *TimedRotatingFileHook {
+	h.locker = locker
+	return h
+}
+
+func (h *TimedRotatingFileHook) ReComputeRollover() *TimedRotatingFileHook {
+	current_time := Now()
 	t := time.Unix(current_time, 0)
 	current_hour := t.Hour()
 	current_minute := t.Minute()
 	current_second := t.Second()
-	r := h.interval - int64((current_hour*60+current_minute)*60+current_second)
+	var r int64
+	if h.when == HOUR {
+		r = h.interval - int64(current_minute*60+current_second)
+	} else {
+		r = h.interval - int64((current_hour*60+current_minute)*60+current_second)
+	}
 	h.rotatorAt = current_time + r
+
+	if h.debug {
+		t := time.Unix(h.rotatorAt, 0).Format(DATE_FMT)
+		fmt.Fprintf(os.Stderr, "[DEBUG] The next rotator is at %v\n", t)
+	}
+
+	return h
 }
 
 func (h *TimedRotatingFileHook) SetMode(mode int) (int, error) {
@@ -83,14 +123,29 @@ func (h *TimedRotatingFileHook) SetDebug(debug bool) *TimedRotatingFileHook {
 	return h
 }
 
-func (h *TimedRotatingFileHook) SetInternal(day int) *TimedRotatingFileHook {
-	h.interval = int64(day) * MIDNIGHT
-	h.ReComputeRollover(Now())
+func (h *TimedRotatingFileHook) setInterval(per, n int64) *TimedRotatingFileHook {
+	h.when = per
+	h.interval = per * n
+	h.suffix = mapExtFMT[per]
+	h.extMatch, _ = mapExtMatch[per]
+	h.ReComputeRollover()
 	return h
 }
 
+func (h *TimedRotatingFileHook) SetIntervalHour(hours int) *TimedRotatingFileHook {
+	return h.setInterval(HOUR, int64(hours))
+}
+
+func (h *TimedRotatingFileHook) SetIntervalDay(days int) *TimedRotatingFileHook {
+	return h.setInterval(DAY, int64(days))
+}
+
+func (h *TimedRotatingFileHook) SetIntervalWeek(weeks int) *TimedRotatingFileHook {
+	return h.setInterval(WEEK, int64(weeks))
+}
+
 func (h *TimedRotatingFileHook) SetBackupCount(i int) *TimedRotatingFileHook {
-	h.BackupCount = i
+	h.backupCount = i
 	return h
 }
 
@@ -130,19 +185,19 @@ func (h *TimedRotatingFileHook) doRollover() {
 	h.file.Close()
 
 	dstTime := h.rotatorAt - h.interval
-	dstPath := h.Filename + "." + time.Unix(dstTime, 0).Format(DATE)
+	dstPath := h.filename + "." + time.Unix(dstTime, 0).Format(h.suffix)
 	if IsExist(dstPath) {
 		os.Remove(dstPath)
 	}
 
-	if IsFile(h.Filename) {
-		err := os.Rename(h.Filename, dstPath)
+	if IsFile(h.filename) {
+		err := os.Rename(h.filename, dstPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to rename %v to %v", h.Filename, dstPath)
+			fmt.Fprintf(os.Stderr, "Unable to rename %v to %v", h.filename, dstPath)
 		}
 	}
 
-	if h.BackupCount > 0 {
+	if h.backupCount > 0 {
 		files := h.getFilesToDelete()
 		for _, file := range files {
 			os.Remove(file)
@@ -150,12 +205,12 @@ func (h *TimedRotatingFileHook) doRollover() {
 	}
 
 	h.file.Open()
-	h.ReComputeRollover(Now())
+	h.ReComputeRollover()
 }
 
 func (h TimedRotatingFileHook) getFilesToDelete() []string {
 	result := make([]string, 0, 30)
-	dirName, baseName := filepath.Split(h.Filename)
+	dirName, baseName := filepath.Split(h.filename)
 	fileNames, err := List(dirName)
 	if err != nil {
 		return result
@@ -168,17 +223,17 @@ func (h TimedRotatingFileHook) getFilesToDelete() []string {
 		prefix = string(fileName[:plen])
 		if _prefix == prefix {
 			suffix = string(fileName[plen:])
-			if DATE_RE.MatchString(suffix) {
+			if h.extMatch.MatchString(suffix) {
 				result = append(result, filepath.Join(dirName, fileName))
 			}
 		}
 	}
 	sort.Strings(result)
 
-	if len(result) < h.BackupCount {
+	if len(result) < h.backupCount {
 		result = []string{}
 	} else {
-		result = result[:len(result)-h.BackupCount]
+		result = result[:len(result)-h.backupCount]
 	}
 	return result
 }

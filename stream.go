@@ -10,14 +10,15 @@ import (
 )
 
 type StreamHook struct {
-	Terminator string
+	terminator string
 	writer     *bufio.Writer
-	Locker     sync.Locker
-	Debug      bool
+	locker     sync.Locker
+	debug      bool
 }
 
 func NewStreamHook(writer io.Writer) *StreamHook {
-	return &StreamHook{Terminator: "\n", writer: bufio.NewWriter(writer), Locker: &sync.Mutex{}}
+	return &StreamHook{terminator: "\n", writer: bufio.NewWriter(writer), locker: &sync.Mutex{}}
+
 }
 
 func (h *StreamHook) Levels() []logrus.Level {
@@ -39,19 +40,19 @@ func (h *StreamHook) Fire(entry *logrus.Entry) error {
 	var err error
 
 	if line, err = entry.String(); err != nil {
-		if h.Debug {
+		if h.debug {
 			fmt.Fprintf(os.Stderr, "Unable to read entry: %v\n", err)
 		}
 		return err
 	}
 	if _, err := h.writer.WriteString(line); err != nil {
-		if h.Debug {
+		if h.debug {
 			fmt.Fprintf(os.Stderr, "Unable to write the content: %v\n", err)
 		}
 		return err
 	}
 	if err := h.writer.Flush(); err != nil {
-		if h.Debug {
+		if h.debug {
 			fmt.Fprintf(os.Stderr, "Unable to flush the buffer: %v\n", err)
 		}
 		return err
@@ -60,18 +61,34 @@ func (h *StreamHook) Fire(entry *logrus.Entry) error {
 	return nil
 }
 
-func (h *StreamHook) SetWriter(writer io.Writer) {
+func (h *StreamHook) SetWriter(writer io.Writer) *StreamHook {
 	h.writer = bufio.NewWriter(writer)
+	return h
 }
 
 func (h *StreamHook) Lock() {
-	if h.Locker != nil {
-		h.Locker.Lock()
+	if h.locker != nil {
+		h.locker.Lock()
 	}
 }
 
 func (h *StreamHook) Unlock() {
-	if h.Locker != nil {
-		h.Locker.Unlock()
+	if h.locker != nil {
+		h.locker.Unlock()
 	}
+}
+
+func (h *StreamHook) SetLock(locker sync.Locker) *StreamHook {
+	h.locker = locker
+	return h
+}
+
+func (h *StreamHook) SetDebug(debug bool) *StreamHook {
+	h.debug = debug
+	return h
+}
+
+func (h *StreamHook) SetTerminator(t string) *StreamHook {
+	h.terminator = t
+	return h
 }

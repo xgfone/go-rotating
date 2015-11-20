@@ -15,7 +15,7 @@ func init() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		hook.SetDebug(true).SetBackupCount(7)
+		hook.SetDebug(true).SetBackupCount(7).SetIntervalHour(2)
 		log.Hooks.Add(hook)
 	}
 }
