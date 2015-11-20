@@ -11,7 +11,7 @@ var log = logrus.New()
 
 func init() {
 	log.Out = rotating.NewNullWriter()
-	hook, err := rotating.NewTimeRotatingFileHook("test.log")
+	hook, err := rotating.NewTimedRotatingFileHook("test.log")
 	if err != nil {
 		fmt.Println(err)
 	} else {

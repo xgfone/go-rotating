@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -19,48 +20,45 @@ const (
 
 var DATE_RE *regexp.Regexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}(\.\w+)?$`)
 
-func Now() int64 {
-	return time.Now().Unix()
-}
-
-//////////////
-// NullWriter
-type NullWriter struct {
-}
-
-func NewNullWriter() NullWriter {
-	return NullWriter{}
-}
-
-func (w NullWriter) Write(d []byte) (int, error) {
-	return len(d), nil
-}
-
-//////////////
-// TimeRotatingFileHook
-type TimeRotatingFileHook struct {
+type TimedRotatingFileHook struct {
 	Filename    string
-	interval    int
 	BackupCount int
+	interval    int
 	rotatorAt   int64
 	file        *FileHook
 	debug       bool
+	Locker      sync.Locker
 }
 
-func NewTimeRotatingFileHook(filename string) (*TimeRotatingFileHook, error) {
+func NewTimedRotatingFileHook(filename string) (*TimedRotatingFileHook, error) {
 	filename, _ = filepath.Abs(filename)
+
 	file, err := NewFileHook(filename)
 	if err != nil {
-		// fmt.Fprintf(os.Stderr, "Unable to open the file[%v]: %v", filename, err)
 		return nil, err
 	}
+	file.Locker = nil
 
-	h := &TimeRotatingFileHook{Filename: filename, interval: MIDNIGHT, BackupCount: 31, file: file}
+	h := &TimedRotatingFileHook{Filename: filename, interval: MIDNIGHT,
+		BackupCount: 31, file: file, Locker: &sync.Mutex{}}
 	h.ReComputeRollover(Now())
+
 	return h, nil
 }
 
-func (h *TimeRotatingFileHook) ReComputeRollover(current_time int64) {
+func (h *TimedRotatingFileHook) Lock() {
+	if h.Locker != nil {
+		h.Locker.Lock()
+	}
+}
+
+func (h *TimedRotatingFileHook) Unlock() {
+	if h.Locker != nil {
+		h.Locker.Unlock()
+	}
+}
+
+func (h *TimedRotatingFileHook) ReComputeRollover(current_time int64) {
 	t := time.Unix(current_time, 0)
 	current_hour := t.Hour()
 	current_minute := t.Minute()
@@ -69,32 +67,32 @@ func (h *TimeRotatingFileHook) ReComputeRollover(current_time int64) {
 	h.rotatorAt = current_time + int64(r)
 }
 
-func (h *TimeRotatingFileHook) SetMode(mode int) (int, error) {
+func (h *TimedRotatingFileHook) SetMode(mode int) (int, error) {
 	return h.file.SetMode(mode)
 }
 
-func (h *TimeRotatingFileHook) SetPerm(perm os.FileMode) (os.FileMode, error) {
+func (h *TimedRotatingFileHook) SetPerm(perm os.FileMode) (os.FileMode, error) {
 	return h.file.SetPerm(perm)
 }
 
-func (h *TimeRotatingFileHook) SetDebug(debug bool) *TimeRotatingFileHook {
+func (h *TimedRotatingFileHook) SetDebug(debug bool) *TimedRotatingFileHook {
 	h.debug = debug
 	h.file.SetDebug(debug)
 	return h
 }
 
-func (h *TimeRotatingFileHook) SetInternal(day int) *TimeRotatingFileHook {
+func (h *TimedRotatingFileHook) SetInternal(day int) *TimedRotatingFileHook {
 	h.interval = day * MIDNIGHT
 	h.ReComputeRollover(Now())
 	return h
 }
 
-func (h *TimeRotatingFileHook) SetBackupCount(i int) *TimeRotatingFileHook {
+func (h *TimedRotatingFileHook) SetBackupCount(i int) *TimedRotatingFileHook {
 	h.BackupCount = i
 	return h
 }
 
-func (h *TimeRotatingFileHook) Levels() []logrus.Level {
+func (h *TimedRotatingFileHook) Levels() []logrus.Level {
 	return []logrus.Level{
 		logrus.PanicLevel,
 		logrus.FatalLevel,
@@ -105,26 +103,28 @@ func (h *TimeRotatingFileHook) Levels() []logrus.Level {
 	}
 }
 
-func (h *TimeRotatingFileHook) Fire(entry *logrus.Entry) error {
+func (h *TimedRotatingFileHook) Fire(entry *logrus.Entry) error {
 	if !h.file.Ok {
 		return errors.New("Writer is not ready to write")
 	}
 
+	h.Lock()
+	defer h.Unlock()
+
 	if h.shouldRollover(entry) {
 		h.doRollover()
 	}
-	h.file.Fire(entry)
-	return nil
+	return h.file.Fire(entry)
 }
 
-func (h TimeRotatingFileHook) shouldRollover(entry *logrus.Entry) bool {
+func (h TimedRotatingFileHook) shouldRollover(entry *logrus.Entry) bool {
 	if Now() >= h.rotatorAt {
 		return true
 	}
 	return false
 }
 
-func (h *TimeRotatingFileHook) doRollover() {
+func (h *TimedRotatingFileHook) doRollover() {
 	h.file.Close()
 	currentTime := Now()
 	dstNow := time.Unix(currentTime, 0)
@@ -151,7 +151,7 @@ func (h *TimeRotatingFileHook) doRollover() {
 	h.ReComputeRollover(currentTime)
 }
 
-func (h TimeRotatingFileHook) getFilesToDelete() []string {
+func (h TimedRotatingFileHook) getFilesToDelete() []string {
 	result := make([]string, 0, 30)
 	dirName, baseName := filepath.Split(h.Filename)
 	fileNames, err := List(dirName)

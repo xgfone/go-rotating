@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -12,6 +13,10 @@ const (
 	IS_FILE
 	IS_DIR
 )
+
+func Now() int64 {
+	return time.Now().Unix()
+}
 
 func FileType(name string) uint8 {
 	fi, err := os.Stat(name)
