@@ -1,5 +1,5 @@
 #### Rotate the log file
-A hook of [Logrus](github.com/Sirupsen/logrus), like TimedRotatingFileHandler of the Python logging.
+A hook of [Logrus](https://github.com/Sirupsen/logrus), like TimedRotatingFileHandler of the Python logging.
 
 #### Example
 ```go
