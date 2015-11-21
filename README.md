@@ -93,7 +93,7 @@ func init() {
     if err != nil {
         fmt.Println(err)
     } else {
-        hook.SetDebug(true).SetBackupCount(7).SetSetIntervalHour(2) // Backup once every two hours
+        hook.SetDebug(true).SetBackupCount(7).SetIntervalHour(2) // Backup once every two hours
         log.Hooks.Add(hook)
     }
 }
