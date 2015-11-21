@@ -23,8 +23,9 @@ func init() {
 
 func Loop() {
 	log.WithFields(logrus.Fields{
-		"test1": "test1",
-		"test2": "test2",
+		"test1":  "test1",
+		"test2":  "test2",
+		"lineno": rotating.Fileno(),
 	}).Info("This is a test.")
 }
 
