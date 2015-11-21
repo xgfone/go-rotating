@@ -2,6 +2,12 @@
 A hook of [Logrus](https://github.com/Sirupsen/logrus), such as StreamHook, FileHook, TimedRotatingFileHook like TimedRotatingFileHandler of the Python logging.
 
 ## Example
+#### NullWriter
+NullWriter 是一个实现了 io.Writer 接口的空写入器，它丢弃要写入的内容，并直接返回。
+使用方法：
+```
+writer := rotating.NewNullWriter()
+```
 #### StreamHook
 ```go
 package main
@@ -93,7 +99,7 @@ func init() {
     if err != nil {
         fmt.Println(err)
     } else {
-        hook.SetDebug(true).SetBackupCount(7).SetIntervalHour(2) // Backup once every two hours
+        hook.SetDebug(true).SetBackupCount(7).SetIntervalHour(2) // Backup once every two hours, and totally backup seven times.
         log.Hooks.Add(hook)
     }
 }
