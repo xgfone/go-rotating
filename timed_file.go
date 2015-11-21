@@ -149,6 +149,11 @@ func (h *TimedRotatingFileHook) SetBackupCount(i int) *TimedRotatingFileHook {
 	return h
 }
 
+func (h *TimedRotatingFileHook) SetTerminator(t string) *TimedRotatingFileHook {
+	h.file.SetTerminator(t)
+	return h
+}
+
 func (h *TimedRotatingFileHook) Levels() []logrus.Level {
 	return []logrus.Level{
 		logrus.PanicLevel,

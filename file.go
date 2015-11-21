@@ -145,3 +145,8 @@ func (f *FileHook) SetStream(stream *StreamHook) *FileHook {
 	f.stream = stream
 	return f
 }
+
+func (f *FileHook) SetTerminator(t string) *FileHook {
+	f.stream.SetTerminator(t)
+	return f
+}

@@ -17,7 +17,7 @@ type StreamHook struct {
 }
 
 func NewStreamHook(writer io.Writer) *StreamHook {
-	return &StreamHook{terminator: "\n", writer: bufio.NewWriter(writer), locker: &sync.Mutex{}}
+	return &StreamHook{writer: bufio.NewWriter(writer), locker: &sync.Mutex{}}
 
 }
 
@@ -44,6 +44,9 @@ func (h *StreamHook) Fire(entry *logrus.Entry) error {
 			fmt.Fprintf(os.Stderr, "Unable to read entry: %v\n", err)
 		}
 		return err
+	}
+	if h.terminator != "" {
+		line += h.terminator
 	}
 	if _, err := h.writer.WriteString(line); err != nil {
 		if h.debug {
