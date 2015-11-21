@@ -1,8 +1,8 @@
-#### Rotate the log file
+## Rotate the log file
 A hook of [Logrus](https://github.com/Sirupsen/logrus), such as StreamHook, FileHook, TimedRotatingFileHook like TimedRotatingFileHandler of the Python logging.
 
-#### Example
-# StreamHook
+## Example
+#### StreamHook
 ```go
 package main
 
@@ -36,7 +36,7 @@ func main() {
 }
 ```
 
-# FileHook
+#### FileHook
 ```go
 package main
 
@@ -74,7 +74,7 @@ func main() {
 }
 ```
 
-# TimedRotatingFileHook
+#### TimedRotatingFileHook
 ```go
 package main
 
@@ -113,5 +113,5 @@ func main() {
 }
 ```
 
-#### Note:
+## Note:
 Whichever user is running the go application must have read/write permissions to the log files selected, or if the files do not yet exists, then to the directory in which the files will be created.
