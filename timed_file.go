@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Sirupsen/logrus"
+	"github.com/xgfone/go-utils"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -195,11 +196,11 @@ func (h *TimedRotatingFileHook) doRollover() {
 
 	dstTime := h.rotatorAt - h.interval
 	dstPath := h.filename + "." + time.Unix(dstTime, 0).Format(h.suffix)
-	if IsExist(dstPath) {
+	if utils.IsExist(dstPath) {
 		os.Remove(dstPath)
 	}
 
-	if IsFile(h.filename) {
+	if utils.IsFile(h.filename) {
 		err := os.Rename(h.filename, dstPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Unable to rename %v to %v\n", h.filename, dstPath)
@@ -223,7 +224,7 @@ func (h *TimedRotatingFileHook) doRollover() {
 func (h TimedRotatingFileHook) getFilesToDelete() []string {
 	result := make([]string, 0, 30)
 	dirName, baseName := filepath.Split(h.filename)
-	fileNames, err := List(dirName)
+	fileNames, err := utils.ListDir(dirName)
 	if err != nil {
 		return result
 	}
