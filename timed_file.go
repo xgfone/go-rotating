@@ -183,7 +183,7 @@ func (h TimedRotatingFileHook) shouldRollover(entry *logrus.Entry) bool {
 
 func (h *TimedRotatingFileHook) doRollover() {
 	if h.debug {
-		fmt.Fprintf(os.Stderr, "[DEBUG] Start to rotate the log file.")
+		fmt.Fprintf(os.Stderr, "[DEBUG] Start to rotate the log file.\n")
 	}
 
 	h.file.Close()
@@ -197,7 +197,7 @@ func (h *TimedRotatingFileHook) doRollover() {
 	if IsFile(h.filename) {
 		err := os.Rename(h.filename, dstPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Unable to rename %v to %v", h.filename, dstPath)
+			fmt.Fprintf(os.Stderr, "Unable to rename %v to %v\n", h.filename, dstPath)
 		}
 	}
 
@@ -205,7 +205,7 @@ func (h *TimedRotatingFileHook) doRollover() {
 		files := h.getFilesToDelete()
 		for _, file := range files {
 			if h.debug {
-				fmt.Fprint(os.Stderr, "[DEBUG] Delete the old log file: %v", file)
+				fmt.Fprintf(os.Stderr, "[DEBUG] Delete the old log file: %v\n", file)
 			}
 			os.Remove(file)
 		}
