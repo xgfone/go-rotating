@@ -99,7 +99,8 @@ func init() {
     if err != nil {
         fmt.Println(err)
     } else {
-        hook.SetDebug(true).SetBackupCount(7).SetIntervalHour(2) // Backup once every two hours, and totally backup seven times.
+        // Backup once every two hours. There are seven backup files in all, and others will be deleted.
+        hook.SetDebug(true).SetBackupCount(7).SetIntervalHour(2) 
         log.Hooks.Add(hook)
     }
 }
