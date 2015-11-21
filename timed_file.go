@@ -182,6 +182,10 @@ func (h TimedRotatingFileHook) shouldRollover(entry *logrus.Entry) bool {
 }
 
 func (h *TimedRotatingFileHook) doRollover() {
+	if h.debug {
+		fmt.Fprintf(os.Stderr, "[DEBUG] Start to rotate the log file.")
+	}
+
 	h.file.Close()
 
 	dstTime := h.rotatorAt - h.interval
@@ -200,6 +204,9 @@ func (h *TimedRotatingFileHook) doRollover() {
 	if h.backupCount > 0 {
 		files := h.getFilesToDelete()
 		for _, file := range files {
+			if h.debug {
+				fmt.Fprint(os.Stderr, "[DEBUG] Delete the old log file: %v", file)
+			}
 			os.Remove(file)
 		}
 	}
@@ -218,8 +225,11 @@ func (h TimedRotatingFileHook) getFilesToDelete() []string {
 
 	var suffix, prefix string
 	_prefix := baseName + "."
-	plen := len(prefix)
+	plen := len(_prefix)
 	for _, fileName := range fileNames {
+		if len(fileName) <= plen {
+			continue
+		}
 		prefix = string(fileName[:plen])
 		if _prefix == prefix {
 			suffix = string(fileName[plen:])
