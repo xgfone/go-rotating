@@ -208,12 +208,12 @@ func (h *TimedRotatingFileHook) doRollover() {
 	}
 
 	if h.backupCount > 0 {
-		file := h.getFilesToDelete()
-		for _, file := range files {
+		files := h.getFilesToDelete()
+		for _, f := range files {
 			if h.debug {
-				fmt.Fprintf(os.Stderr, "[DEBUG] Delete the old log file: %v\n", file)
+				fmt.Fprintf(os.Stderr, "[DEBUG] Delete the old log file: %v\n", f)
 			}
-			os.Remove(file)
+			os.Remove(f)
 		}
 	}
 
@@ -224,7 +224,7 @@ func (h *TimedRotatingFileHook) doRollover() {
 func (h TimedRotatingFileHook) getFilesToDelete() []string {
 	result := make([]string, 0, 30)
 	dirName, baseName := filepath.Split(h.filename)
-	fileNames, err := files.ListDir(dirName)
+	fileNames, err := file.ListDir(dirName)
 	if err != nil {
 		return result
 	}
