@@ -1,5 +1,9 @@
-## Rotate the log file
+## [DEPRECATED] Rotate the log file
 A hook of [Logrus](https://github.com/Sirupsen/logrus), such as StreamHook, FileHook, TimedRotatingFileHook like TimedRotatingFileHandler of the Python logging.
+
+**Notice:**
+
+This library is **DEPRECATED**. The new one is `github.com/xgfone/go-tools/log/handler`, which implements the interface `io.WriteCloser`, so you can write an adaptor for a certain logging library. For example, the adaptor of [log15](https://github.com/inconshreveable/log15) is `TimedRotatingFileHandler` in `github.com/xgfone/go-utils/log`.
 
 ## Example
 #### NullWriter
