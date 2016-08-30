@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Sirupsen/logrus"
-	"github.com/xgfone/go-utils/file"
+	"github.com/xgfone/go-tools/file"
 	"os"
 	"path/filepath"
 	"regexp"
